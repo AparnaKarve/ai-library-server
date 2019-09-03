@@ -3,7 +3,6 @@ import logging
 
 from flask import Flask, jsonify
 from flask.logging import default_handler
-import subprocess
 
 
 # Set up logging
@@ -29,7 +28,5 @@ def get_root():
 
 if __name__ == '__main__':
     # pylama:ignore=C0103
-    subprocess.run('curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64 && chmod +x /usr/local/bin/argo', shell=True)
-
     port = os.environ.get("PORT", 8003)
     application.run(port=int(port))

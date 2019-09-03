@@ -1,0 +1,6 @@
+#!/bin/bash
+echo "Installing Argo..."
+curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
+chmod +x /usr/local/bin/argo
+echo "Done Argo installation"
+exec /usr/libexec/s2i/run
