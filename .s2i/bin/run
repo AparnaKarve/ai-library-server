@@ -3,4 +3,6 @@ echo "Installing Argo..."
 curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
 chmod +x /usr/local/bin/argo
 echo "Done Argo installation"
+echo "Gitlab checkout AI workflows..."
+git clone https://gitlab.com/crobby/ai-library.git
 exec /usr/libexec/s2i/run
