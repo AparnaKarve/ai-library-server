@@ -5,4 +5,10 @@ chmod +x /usr/local/bin/argo
 echo "Done Argo installation"
 echo "Gitlab checkout AI workflows..."
 git clone https://gitlab.com/crobby/ai-library.git
+cd ai-library
+git branch argoworkflows
+git checkout argoworkflows
+git pull --rebase origin argoworkflows
+cd ..
+cp flakestrain/workflow.yaml ai-library/flakes_train/tools/flakes-training-template2.yaml
 exec /usr/libexec/s2i/run

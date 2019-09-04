@@ -1,0 +1,58 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: flakestrain
+spec:
+  entrypoint: train-flakes
+  volumes:
+    - name: workdir
+      emptyDir: {}
+  templates:
+  - name: trainflakes
+    container:
+      env:
+      - name: APP_FILE
+        value: flakes_training.py
+      - name: INPUT_DIR
+        value: /opt/app-root/src/data
+      - name: OUTPUT_DIR
+        value: /mnt/vol
+      image: quay.io/croberts/argo-flakes-train-nos3
+      imagePullPolicy: Always
+      volumeMounts:
+        - name: workdir
+          mountPath: /mnt/vol
+    inputs:
+      artifacts:
+      - name: flakestraindata
+        path: /opt/app-root/src/data
+        mode: 0755
+        s3:
+          key: chadtest/flake/flakes.tar.gz
+          endpoint: s3.amazonaws.com
+          bucket: ak-s3-reject
+          accessKeySecret:
+            name: my-aws-credentials
+            key: accesskey
+          secretKeySecret:
+            name: my-aws-credentials
+            key: secretkey
+    outputs:
+      artifacts:
+      - name: flakesmodel
+        path: /mnt/vol
+        s3:
+          key: chadtest/fromargo/flake/model-output-{{workflow.uid}}.tgz
+          endpoint: s3.amazonaws.com
+          bucket: ak-s3-reject
+          accessKeySecret:
+            name: my-aws-credentials
+            key: accesskey
+          secretKeySecret:
+            name: my-aws-credentials
+            key: secretkey
+  - name: train-flakes
+    dag:
+      tasks:
+      - name: Flakes-Train
+        template: trainflakes

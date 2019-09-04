@@ -1,0 +1,94 @@
+# The following workflow executes a multi-root workflow
+#
+#   A   B
+#  / \ /
+# C   D
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: frauddetection
+spec:
+  entrypoint: fraud-workflow
+  volumes:
+  - name: workdir
+    emptyDir: {}
+  templates:
+  - name: echo
+    inputs:
+      parameters:
+      - name: message
+    container:
+      env:
+      - name: ACCESS_KEY_ID
+        valueFrom:
+          secretKeyRef:
+            name: my-aws-credentials
+            key: accesskey
+      - name: SECRET_ACCESS_KEY
+        valueFrom:
+          secretKeyRef:
+            name: my-aws-credentials
+            key: secretkey
+      - name: S3_ENDPOINT_URL
+        value: "http://s3-us-west-2.amazonaws.com/ak-s3-reject"
+      image: alpine:3.7
+      command: [echo, "{{inputs.parameters.message}}"]
+  - name: whalesay
+    container:
+      image: docker/whalesay:latest
+      command: [sh, -c]
+      args: ["sleep 1; echo -n true > /tmp/hyper.txt"]
+  - name: volumes-emptydir-example
+    container:
+      image: debian:latest
+      command: ["/bin/bash", "-c"]
+      args: ["
+        vol_found=`mount | grep /mnt/vol` && \
+        if [[ -n $vol_found ]]; then echo \"Volume mounted and found\"; else echo \"Not found\"; fi; sleep 1; echo -n true > /mnt/vol/hyper.txt"]
+      volumeMounts:
+      - name: workdir
+        mountPath: /mnt/vol
+    outputs:
+      parameters:
+      - name: should-hyper
+        valueFrom:
+          path: /mnt/vol/hyper.txt
+  - name: fraud-workflow
+    dag:
+      tasks:
+      - name: Read-Data-AWS
+        template: echo
+        arguments:
+          parameters: [{name: message, value: Read-Data-AWS}]
+      - name: Read-Data-Ceph
+        dependencies:
+        template: echo
+        arguments:
+          parameters: [{name: message, value: Read-Data-Ceph}]
+      - name: Transform-Data
+        dependencies: [Read-Data-Ceph,Read-Data-AWS]
+        template: volumes-emptydir-example
+      - name: Hyper-Tuning
+        dependencies: [Transform-Data]
+        template: echo
+        when: "{{tasks.Transform-Data.outputs.parameters.should-hyper}} == true"
+        arguments:
+          parameters: [{name: message, value: Hyper-Tuning}]
+      - name: Train-Model
+        dependencies: [Transform-Data,Hyper-Tuning]
+        template: echo
+        arguments:
+          parameters: [{name: message, value: Train-Model}]
+      - name: Validate-Model
+        dependencies: [Train-Model]
+        template: echo
+        arguments:
+          parameters: [{name: message, value: "{{item}}"}]
+        withItems:
+        - hello world
+        - goodbye world
+      - name: Publish-Model
+        dependencies: [Validate-Model]
+        template: echo
+        arguments:
+          parameters: [{name: message, value: Publish-Model}]
