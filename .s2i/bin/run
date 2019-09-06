@@ -1,14 +1,9 @@
 #!/bin/bash
-echo "Installing Argo..."
+echo "Installing Argo CLI..."
 curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
 chmod +x /usr/local/bin/argo
-echo "Done Argo installation"
+echo "Done Argo CLI installation"
 echo "Gitlab checkout AI workflows..."
-git clone https://gitlab.com/crobby/ai-library.git
-cd ai-library
-git branch argoworkflows
-git checkout argoworkflows
-git pull --rebase origin argoworkflows
-cd ..
-cp flakestrain/workflow.yaml ai-library/flakes_train/tools/flakes-training-template2.yaml
+git clone https://gitlab.com/opendatahub/ai-library.git
+#cp flakestrain/workflow.yaml ai-library/flakes_train/tools/flakes-training-template2.yaml
 exec /usr/libexec/s2i/run
