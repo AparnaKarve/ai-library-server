@@ -1,0 +1,59 @@
+apiVersion: argoproj.io/v1alpha1
+kind: Workflow
+metadata:
+  generateName: dupbugtrain
+spec:
+  entrypoint: train-duplicate-bugs
+  volumes:
+    - name: workdir
+      emptyDir: {}
+  templates:
+  - name: traindupebugs
+    container:
+      env:
+      - name: APP_FILE
+        value: duplicate_train.py
+      - name: INPUT_DIR
+        value: /opt/app-root/src/data
+      - name: OUTPUT_DIR
+        value: /mnt/output
+      image: quay.io/croberts/argo-duplicate-bugs-train
+      imagePullPolicy: Always
+      volumeMounts:
+        - name: workdir
+          mountPath: /mnt/output
+    inputs:
+      artifacts:
+      - name: dupebugstraindata
+        path: /opt/app-root/src/data
+        mode: 0755
+        s3:
+          key: chadtest/duplicate_bug_detection/cinder_bugs.tar.gz
+          endpoint: s3.upshift.redhat.com
+          bucket: DH-DEV-DATA
+          accessKeySecret:
+            name: my-s3-credentials
+            key: accesskey
+          secretKeySecret:
+            name: my-s3-credentials
+            key: secretkey
+    outputs:
+      artifacts:
+      - name: dupebugsmodel
+        path: /mnt/output
+        s3:
+          key: chadtest/fromargo/cinder-bugs-output-{{workflow.creationTimestamp.Y}}{{workflow.creationTimestamp.m}}{{workflow.creationTimestamp.d}}{{workflow.creationTimestamp.I}}{{workflow.creationTimestamp.M}}{{workflow.creationTimestamp.S}}.tar.gz
+          endpoint: s3.upshift.redhat.com
+          bucket: DH-DEV-DATA
+          accessKeySecret:
+            name: my-s3-credentials
+            key: accesskey
+          secretKeySecret:
+            name: my-s3-credentials
+            key: secretkey
+  - name: train-duplicate-bugs
+    dag:
+      tasks:
+        - name: Dupe-Bugs-Train
+          template: traindupebugs
+
