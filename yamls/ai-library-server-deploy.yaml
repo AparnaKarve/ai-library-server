@@ -1,0 +1,119 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: ai-library-server
+
+parameters:
+- name: IMAGE_NAMESPACE
+  displayName: Image Namespace
+  description: Namespace which contains the image stream to pull from
+  value: ai-library-server
+
+objects:
+- kind: Service
+  apiVersion: v1
+  metadata:
+    labels:
+      app: ai-library-server
+    name: ai-library-server
+    annotations:
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: ai-library-server
+    sessionAffinity: None
+    type: ClusterIP
+
+- kind: DeploymentConfig
+  apiVersion: apps.openshift.io/v1
+  metadata:
+    labels:
+      app: ai-library-server
+    name: ai-library-server
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: ai-library-server
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: ai-library-server
+          deploymentconfig: ai-library-server
+      spec:
+        containers:
+        - env:
+          image: ${IMAGE_NAMESPACE}/ai-library-server:latest
+          imagePullPolicy: Always
+          name: ai-library-server
+          securityContext:
+            runAsUser: 0
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          resources:
+            limits:
+              cpu: 500m
+              memory: 2Gi
+            requests:
+              cpu: 250m
+              memory: 512Mi
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        terminationGracePeriodSeconds: 30
+
+    test: false
+    triggers:
+    - imageChangeParams:
+        automatic: true
+        containerNames:
+        - ai-library-server 
+        from:
+          kind: ImageStreamTag
+          name: ai-library-server:latest
+          namespace: ${IMAGE_NAMESPACE}
+      type: ImageChange
+    - type: ConfigChange
+
+- kind: Route
+  apiVersion: route.openshift.io/v1
+  metadata:
+    annotations:
+      haproxy.router.openshift.io/timeout: 30m
+    name: ai-library-server
+  spec:
+    to:
+      kind: Service
+      name: ai-library-server
+
+- kind: HorizontalPodAutoscaler
+  apiVersion: autoscaling/v2beta1
+  metadata:
+    labels:
+      app: ai-library-server
+    name: ai-library-server
+  spec:
+    scaleTargetRef:
+      kind: DeploymentConfig
+      name: ai-library-server
+      apiVersion: apps.openshift.io/v1
+    minReplicas: 1
+    maxReplicas: 3 
+    metrics:
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: 90
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 80
+

@@ -1,0 +1,76 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: builder-ai-library-server
+
+parameters:
+- name: NAMESPACE
+  description: Name of your project (e.g. myproject)
+- name: SOURCE_REPOSITORY_URL
+  description: The URL of the repository with your application source code.
+  displayName: Git repository URI
+  required: true
+  value: https://github.com/AparnaKarve/ai-library-server.git
+- name: SOURCE_REPOSITORY_REF
+  description: Git repository branch to check out, if different from default
+  displayName: Git Reference
+  value: master
+- name: CONTEXT_DIR
+  description: Directory to build s2i image 
+  displayName: Directory to build s2i image 
+- name: SOURCE_REPOSITORY_COMMIT
+  description: Git repository commit to check out, if different from default
+
+objects:
+- kind: BuildConfig
+  apiVersion: build.openshift.io/v1
+  metadata:
+    labels:
+      app: ai-library-server
+    name: ai-library-server
+  spec:
+    resources:
+      limits:
+        cpu: 500m
+        memory: 512Mi
+    output:
+      to:
+        kind: ImageStreamTag
+        name: ai-library-server:latest
+    source:
+      type: Git
+      git:
+        ref: ${SOURCE_REPOSITORY_REF}
+        uri: ${SOURCE_REPOSITORY_URL}
+        commit: ${SOURCE_REPOSITORY_COMMIT}
+      contextDir: ${CONTEXT_DIR}
+    strategy:
+      sourceStrategy:
+        from:
+          kind: ImageStreamTag
+          name: python:3.6
+          namespace: openshift
+      type: Source
+      incremental: true
+    triggers:
+    - type: GitHub
+      github:
+        secret: build
+    - imageChange: {}
+      type: ImageChange
+    - type: ConfigChange
+
+- kind: ImageStream
+  apiVersion: image.openshift.io/v1
+  metadata:
+    labels:
+      app: ai-library-server
+    name: ai-library-server
+  spec:
+    lookupPolicy:
+      local: false
+    tags:
+    - from:
+        kind: DockerImage
+        name: ai-library-server:latest
+      name: latest
