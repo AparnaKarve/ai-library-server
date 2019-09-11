@@ -99,10 +99,15 @@ def argo_command(cmd, input_data_with_params, options=[], parse=True) -> dict:
 
     ARGO_CMDLINE.extend(options)
 
+    ROOT_LOGGER.info("Argo command line: %s", ARGO_CMDLINE)
+
     output, error = call_argo()
 
     if error:
+        ROOT_LOGGER.exception("Argo command line error: %s", output)
         return {'Error': output}
+
+    ROOT_LOGGER.info("Argo command line successfully executed")
 
     if parse:
         cmd_dict = parse_output(output)
