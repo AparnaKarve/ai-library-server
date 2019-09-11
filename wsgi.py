@@ -25,7 +25,7 @@ def pass_workflow(_k, v):
     ARGO_CMDLINE.append(v)
 
 
-def pass_workflow_name(v):
+def pass_workflow_name(_k, v):
     ARGO_CMDLINE.append(v)
 
 
@@ -37,27 +37,29 @@ def pass_parameter(k, v):
     ARGO_CMDLINE.extend(['-p', f'{k}={v}'])
 
 
-def workflow_info_json(workflow_name):
-    ARGO_CMDLINE.extend(['get', workflow_name, '-o', 'json'])
-
-
 SWITCHER = {
         'workflow': pass_workflow,
         'namespace': pass_namespace,
+        'workflow_name': pass_workflow_name,
     }
 
 
 def parse_output(output_lines) -> dict:
-    lines = output_lines.decode("utf-8").split('\n')
-    d = dict(map(str.strip, s.split(':', 1)) for s in lines[:5])
+    lines = output_lines.strip().decode("utf-8").split('\n')
+    d = dict(map(str.strip, s.split(':', 1)) for s in lines[:6])
     return d
 
 
-def call_argo() -> str:
-    result = subprocess.check_output(ARGO_CMDLINE)
+def call_argo() -> ():
+    error = 0
+    try:
+        result = subprocess.check_output(ARGO_CMDLINE, stderr=subprocess.STDOUT)
+    except subprocess.CalledProcessError as e:
+        result = e.output.decode().strip("\n")
+        error = 1
     ARGO_CMDLINE.clear()
     ARGO_CMDLINE.append(ARGO)
-    return result
+    return result, error
 
 
 def outputs_and_artifacts(pod_info_json, node) -> dict:
@@ -88,6 +90,28 @@ def outputs_and_artifacts(pod_info_json, node) -> dict:
     return per_pod_output_info
 
 
+def argo_command(cmd, input_data_with_params, options=[], parse=True) -> dict:
+    ARGO_CMDLINE.append(cmd)
+
+    for k, v in input_data_with_params.items():
+        func = SWITCHER.get(k, pass_parameter)
+        func(k, v)
+
+    ARGO_CMDLINE.extend(options)
+
+    output, error = call_argo()
+
+    if error:
+        return {'Error': output}
+
+    if parse:
+        cmd_dict = parse_output(output)
+    else:
+        cmd_dict = json.loads(output.decode("utf-8"))
+
+    return cmd_dict
+
+
 @application.route('/', methods=['GET'])
 def get_root():
     """Root Endpoint."""
@@ -104,14 +128,10 @@ def post_submit():
 
     input_data = request.get_json(force=True)
 
-    ARGO_CMDLINE.append('submit')
+    submit_dict = argo_command('submit', input_data)
 
-    for k, v in input_data.items():
-        func = SWITCHER.get(k, pass_parameter)
-        func(k, v)
-
-    output = call_argo()
-    submit_dict = parse_output(output)
+    if submit_dict.get('Error'):
+        return jsonify(submit_dict), 500
 
     return jsonify(submit_dict), 200
 
@@ -122,23 +142,22 @@ def post_e2e():
 
     input_data = request.get_json(force=True)
 
-    ARGO_CMDLINE.append('submit')
+    submit_dict = argo_command('submit', input_data)
 
-    for k, v in input_data.items():
-        func = SWITCHER.get(k, pass_parameter)
-        func(k, v)
+    if submit_dict.get('Error'):
+        return jsonify(submit_dict), 500
 
-    submit_output = call_argo()
-    submit_dict = parse_output(submit_output)
+    watch_on = {
+        'workflow_name': submit_dict['Name'],
+        'namespace': submit_dict['Namespace']
+    }
 
-    workflow_name = submit_dict['Name']
+    watch_output = argo_command('watch', watch_on)
 
-    ARGO_CMDLINE.extend(['watch', workflow_name])
-    _watch_output = call_argo()
+    if watch_output.get('Error'):
+        return jsonify(watch_output), 500
 
-    workflow_info_json(workflow_name)
-    pod_info = call_argo().decode("utf-8")
-    pod_info_json = json.loads(pod_info)
+    pod_info_json = argo_command('get', watch_on, ['-o', 'json'], False)
 
     response_json = {
         "Completed": pod_info_json['metadata']['labels']['workflows.argoproj.io/completed'],
@@ -162,12 +181,12 @@ def post_get():
 
     input_data = request.get_json(force=True)
 
-    ARGO_CMDLINE.append('get')
+    get_workflow = {
+        'workflow_name': input_data.get('workflow_name'),
+        'namespace': input_data.get('namespace')
+    }
 
-    pass_workflow_name(input_data.get('workflow_name'))
-
-    output = call_argo()
-    get_dict = parse_output(output)
+    get_dict = argo_command('get', get_workflow)
 
     return jsonify(get_dict), 200
 
