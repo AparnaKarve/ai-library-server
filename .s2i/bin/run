@@ -4,8 +4,6 @@ curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/downl
 chmod +x /usr/local/bin/argo
 echo "Done Argo CLI installation"
 
-mkdir argo_workflows
-
 cd /tmp
 echo "Gitlab checkout AI Library and Argo Workflows in /tmp ..."
 git clone https://gitlab.com/akarve/ai-library.git
