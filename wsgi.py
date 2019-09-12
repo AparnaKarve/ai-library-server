@@ -62,10 +62,10 @@ def call_argo() -> ():
     return result, error
 
 
-def outputs_and_artifacts(pod_info_json, node) -> dict:
-    outputs = pod_info_json['status']['nodes'][node].get('outputs', {})
-    phase = pod_info_json['status']['nodes'][node].get('phase', 'No info available')
-    message = pod_info_json['status']['nodes'][node].get('message', 'No info available')
+def outputs_and_artifacts(pods_output, node) -> dict:
+    outputs = pods_output['status']['nodes'][node].get('outputs', {})
+    phase = pods_output['status']['nodes'][node].get('phase', 'No info available')
+    message = pods_output['status']['nodes'][node].get('message', 'No info available')
 
     per_pod_output_info = {
         'phase': phase,
@@ -90,7 +90,7 @@ def outputs_and_artifacts(pod_info_json, node) -> dict:
     return per_pod_output_info
 
 
-def argo_command(cmd, input_data_with_params, options=[], parse=True) -> dict:
+def argo_command(cmd, input_data_with_params, options=[]) -> dict:
     ARGO_CMDLINE.append(cmd)
 
     for k, v in input_data_with_params.items():
@@ -109,12 +109,47 @@ def argo_command(cmd, input_data_with_params, options=[], parse=True) -> dict:
 
     ROOT_LOGGER.info("Argo command line successfully executed")
 
-    if parse:
-        cmd_dict = parse_output(output)
-    else:
+    if options:
         cmd_dict = json.loads(output.decode("utf-8"))
+    else:
+        cmd_dict = parse_output(output)
 
     return cmd_dict
+
+
+def argo_get(input_data) -> dict:
+    get_workflow = {
+        'workflow_name': input_data.get('workflow_name'),
+        'namespace': input_data.get('namespace')
+    }
+    get_dict = argo_command('get', get_workflow, ['-o', 'json'])
+
+    return get_dict
+
+
+def argo_watch(input_data) -> dict:
+    watch_workflow = {
+        'workflow_name': input_data.get('workflow_name'),
+        'namespace': input_data.get('namespace')
+    }
+    watch_dict = argo_command('watch', watch_workflow)
+
+    return watch_dict
+
+
+def format_pod_info_response(pods_output) -> dict:
+    response_json = {
+        "Info": pods_output['metadata'],
+        "Per_Step_Output": {},
+    }
+
+    nodes = pods_output['status']['nodes']
+
+    for node in nodes:
+        pod_name = pods_output['status']['nodes'][node].get('name', '')
+        response_json['Per_Step_Output'][pod_name] = outputs_and_artifacts(pods_output, node)
+
+    return response_json
 
 
 @application.route('/', methods=['GET'])
@@ -133,12 +168,11 @@ def post_submit():
 
     input_data = request.get_json(force=True)
 
-    submit_dict = argo_command('submit', input_data)
-
+    submit_dict = argo_command('submit', input_data, ['-o', 'json'])
     if submit_dict.get('Error'):
         return jsonify(submit_dict), 500
 
-    return jsonify(submit_dict), 200
+    return jsonify(submit_dict['metadata']), 200
 
 
 @application.route('/e2e', methods=['POST'])
@@ -147,53 +181,36 @@ def post_e2e():
 
     input_data = request.get_json(force=True)
 
-    submit_dict = argo_command('submit', input_data)
-
+    submit_dict = argo_command('submit', input_data, ['-o', 'json'])
     if submit_dict.get('Error'):
         return jsonify(submit_dict), 500
 
-    watch_on = {
-        'workflow_name': submit_dict['Name'],
-        'namespace': submit_dict['Namespace']
-    }
-
-    watch_output = argo_command('watch', watch_on)
-
+    input_data['workflow_name'] = submit_dict['metadata']['name']
+    input_data['namespace'] = submit_dict['metadata']['namespace']
+    watch_output = argo_watch(input_data)
     if watch_output.get('Error'):
         return jsonify(watch_output), 500
 
-    pod_info_json = argo_command('get', watch_on, ['-o', 'json'], False)
+    pods_output = argo_get(input_data)
+    if pods_output.get('Error'):
+        return jsonify(pods_output), 500
 
-    response_json = {
-        "Completed": pod_info_json['metadata']['labels']['workflows.argoproj.io/completed'],
-        "Phase": pod_info_json['status'].get('phase'),
-        "Message": pod_info_json['status'].get('message', 'No Errors'),
-        "Per_Step_Output": {},
-    }
-
-    nodes = pod_info_json['status']['nodes']
-
-    for node in nodes:
-        pod_name = pod_info_json['status']['nodes'][node].get('name', '')
-        response_json['Per_Step_Output'][pod_name] = outputs_and_artifacts(pod_info_json, node)
-
+    response_json = format_pod_info_response(pods_output)
     return jsonify({"workflow_response": response_json}), 200
 
 
 @application.route('/get', methods=['POST'])
 def post_get():
-    """Submit Endpoint."""
+    """Get Endpoint."""
 
     input_data = request.get_json(force=True)
 
-    get_workflow = {
-        'workflow_name': input_data.get('workflow_name'),
-        'namespace': input_data.get('namespace')
-    }
+    pods_output = argo_get(input_data)
+    if pods_output.get('Error'):
+        return jsonify(pods_output), 500
 
-    get_dict = argo_command('get', get_workflow)
-
-    return jsonify(get_dict), 200
+    response_json = format_pod_info_response(pods_output)
+    return jsonify({"workflow_response": response_json}), 200
 
 
 if __name__ == '__main__':
