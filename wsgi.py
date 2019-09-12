@@ -21,11 +21,7 @@ ARGO = '/usr/local/bin/argo'
 ARGO_CMDLINE = [ARGO]
 
 
-def pass_workflow(_k, v):
-    ARGO_CMDLINE.append(v)
-
-
-def pass_workflow_name(_k, v):
+def pass_entity(_k, v):
     ARGO_CMDLINE.append(v)
 
 
@@ -37,10 +33,10 @@ def pass_parameter(k, v):
     ARGO_CMDLINE.extend(['-p', f'{k}={v}'])
 
 
-SWITCHER = {
-        'workflow': pass_workflow,
+PARAM_METHODS = {
+        'workflow': pass_entity,
         'namespace': pass_namespace,
-        'workflow_name': pass_workflow_name,
+        'workflow_name': pass_entity,
     }
 
 
@@ -90,11 +86,11 @@ def outputs_and_artifacts(pods_output, node) -> dict:
     return per_pod_output_info
 
 
-def argo_command(cmd, input_data_with_params, options=[]) -> dict:
+def argo_command(cmd, input_data_with_params, options=['-o', 'json']) -> dict:
     ARGO_CMDLINE.append(cmd)
 
     for k, v in input_data_with_params.items():
-        func = SWITCHER.get(k, pass_parameter)
+        func = PARAM_METHODS.get(k, pass_parameter)
         func(k, v)
 
     ARGO_CMDLINE.extend(options)
@@ -107,7 +103,7 @@ def argo_command(cmd, input_data_with_params, options=[]) -> dict:
         ROOT_LOGGER.exception("Argo command line error: %s", output)
         return {'Error': output}
 
-    ROOT_LOGGER.info("Argo command line successfully executed")
+    ROOT_LOGGER.info("Argo command line executed successfully")
 
     if options:
         cmd_dict = json.loads(output.decode("utf-8"))
@@ -122,7 +118,7 @@ def argo_get(input_data) -> dict:
         'workflow_name': input_data.get('workflow_name'),
         'namespace': input_data.get('namespace')
     }
-    get_dict = argo_command('get', get_workflow, ['-o', 'json'])
+    get_dict = argo_command('get', get_workflow)
 
     return get_dict
 
@@ -132,7 +128,7 @@ def argo_watch(input_data) -> dict:
         'workflow_name': input_data.get('workflow_name'),
         'namespace': input_data.get('namespace')
     }
-    watch_dict = argo_command('watch', watch_workflow)
+    watch_dict = argo_command('watch', watch_workflow, [])
 
     return watch_dict
 
@@ -168,7 +164,7 @@ def post_submit():
 
     input_data = request.get_json(force=True)
 
-    submit_dict = argo_command('submit', input_data, ['-o', 'json'])
+    submit_dict = argo_command('submit', input_data)
     if submit_dict.get('Error'):
         return jsonify(submit_dict), 500
 
@@ -181,7 +177,7 @@ def post_e2e():
 
     input_data = request.get_json(force=True)
 
-    submit_dict = argo_command('submit', input_data, ['-o', 'json'])
+    submit_dict = argo_command('submit', input_data)
     if submit_dict.get('Error'):
         return jsonify(submit_dict), 500
 
@@ -189,10 +185,14 @@ def post_e2e():
     input_data['namespace'] = submit_dict['metadata']['namespace']
     watch_output = argo_watch(input_data)
     if watch_output.get('Error'):
+        error_message = f"Workflow {input_data['workflow_name']} submitted OK, output/artifacts info cannot be produced"
+        watch_output['message'] = error_message
         return jsonify(watch_output), 500
 
     pods_output = argo_get(input_data)
     if pods_output.get('Error'):
+        error_message = f"Workflow {input_data['workflow_name']} submitted OK, output/artifacts info cannot be produced"
+        pods_output['message'] = error_message
         return jsonify(pods_output), 500
 
     response_json = format_pod_info_response(pods_output)
