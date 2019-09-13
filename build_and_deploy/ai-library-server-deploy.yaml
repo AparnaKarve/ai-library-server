@@ -65,6 +65,26 @@ objects:
             requests:
               cpu: 125m
               memory: 512Mi
+          livenessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: "/"
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 600
+            successThreshold: 1
+            timeoutSeconds: 120
+          readinessProbe:
+            failureThreshold: 3
+            httpGet:
+              path: "/"
+              port: 8080
+              scheme: HTTP
+            initialDelaySeconds: 5
+            periodSeconds: 600
+            successThreshold: 1
+            timeoutSeconds: 120
         dnsPolicy: ClusterFirst
         restartPolicy: Always
         schedulerName: default-scheduler
