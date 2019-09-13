@@ -4,16 +4,18 @@ curl -sSL -o /usr/local/bin/argo https://github.com/argoproj/argo/releases/downl
 chmod +x /usr/local/bin/argo
 echo "Done Argo CLI installation"
 
-cd /tmp
-echo "Gitlab checkout AI Library and Argo Workflows in /tmp ..."
-git clone https://gitlab.com/akarve/ai-library.git
-cd ai-library
-git checkout parameterize_flakes_train
-
-cd
-
-cp /tmp/ai-library/flakes_train/tools/flakes-training-template.yaml ./argo_workflows/flakes-training-template.yaml
-rm -rf /tmp/ai-library
-echo "Done getting Required AI Library Argo Workflows"
+#### Strategy to get required workflows in the container during deployment
+#cd /tmp
+#echo "Gitlab checkout AI Library and Argo Workflows in /tmp ..."
+#git clone https://gitlab.com/akarve/ai-library.git
+#cd ai-library
+#git checkout parameterize_flakes_train
+#
+#cd
+#
+#cp /tmp/ai-library/flakes_train/tools/flakes-training-template.yaml ./argo_workflows/flakes-training-template.yaml
+#rm -rf /tmp/ai-library
+#echo "Done getting Required AI Library Argo Workflows"
+####
 
 exec /usr/libexec/s2i/run

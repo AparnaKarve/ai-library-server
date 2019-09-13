@@ -39,10 +39,10 @@ def pass_parameter(k, v):
 
 
 PARAM_METHODS = {
-        'workflow': pass_entity,
-        'namespace': pass_namespace,
-        'workflow_name': pass_entity,
         'workflow_yaml': pass_entity,
+        'workflow': pass_entity,
+        'workflow_name': pass_entity,
+        'namespace': pass_namespace,
     }
 
 

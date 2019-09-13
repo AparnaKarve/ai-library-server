@@ -1,7 +1,7 @@
 kind: Template
 apiVersion: v1
 metadata:
-  name: builder-ai-library-server
+  name: builder-argo-rest-server
 
 parameters:
 - name: NAMESPACE
@@ -26,8 +26,8 @@ objects:
   apiVersion: build.openshift.io/v1
   metadata:
     labels:
-      app: ai-library-server
-    name: ai-library-server
+      app: argo-rest-server
+    name: argo-rest-server
   spec:
     resources:
       limits:
@@ -36,7 +36,7 @@ objects:
     output:
       to:
         kind: ImageStreamTag
-        name: ai-library-server:latest
+        name: argo-rest-server:latest
     source:
       type: Git
       git:
@@ -64,13 +64,13 @@ objects:
   apiVersion: image.openshift.io/v1
   metadata:
     labels:
-      app: ai-library-server
-    name: ai-library-server
+      app: argo-rest-server
+    name: argo-rest-server
   spec:
     lookupPolicy:
       local: false
     tags:
     - from:
         kind: DockerImage
-        name: ai-library-server:latest
+        name: argo-rest-server:latest
       name: latest
