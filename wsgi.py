@@ -149,6 +149,12 @@ def argo_watch(input_data) -> dict:
     return watch_dict
 
 
+def argo_version() -> dict:
+    version_dict = argo_command('version', {}, [])
+
+    return version_dict
+
+
 def format_pod_info_response(pods_output) -> dict:
     response_json = {
         "Info": pods_output['metadata'],
@@ -193,6 +199,10 @@ def analyze_request() -> dict:
 @application.route('/', methods=['GET'])
 def get_root():
     """Root Endpoint."""
+
+    version_dict = argo_version()
+    if version_dict.get('Error'):
+        return jsonify(version_dict), 500
 
     return jsonify(
         status="Success",
