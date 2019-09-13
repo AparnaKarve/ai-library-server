@@ -6,6 +6,11 @@ from flask.logging import default_handler
 import subprocess
 import json
 
+from io import BytesIO
+import multipart as mp
+import yaml
+import tempfile
+
 
 # Set up logging
 ROOT_LOGGER = logging.getLogger()
@@ -37,6 +42,7 @@ PARAM_METHODS = {
         'workflow': pass_entity,
         'namespace': pass_namespace,
         'workflow_name': pass_entity,
+        'workflow_yaml': pass_entity,
     }
 
 
@@ -72,7 +78,8 @@ def outputs_and_artifacts(pods_output, node) -> dict:
 
     if artifacts:
         for i, artifact in enumerate(artifacts):
-            s3info = artifact.get('s3', {}) # For now we assume that artifacts are of the type s3
+            # For now we assume that artifacts are of the type s3
+            s3info = artifact.get('s3', {})
             per_pod_output_info['outputs'] = {
                 'artifact_type': 'S3',
                 'bucket': s3info.get('bucket', ''),
@@ -98,6 +105,15 @@ def argo_command(cmd, input_data_with_params, options=['-o', 'json']) -> dict:
     ROOT_LOGGER.info("Argo command line: %s", ARGO_CMDLINE)
 
     output, error = call_argo()
+
+    try:
+        if 'workflow_yaml' in input_data_with_params:
+            os.remove(input_data_with_params['workflow_yaml'])
+    except (TypeError, IOError) as e:
+        # simply log the exception in this case
+        # do not return an error since this is not a critical error
+        error_msg = "Error while deleting the temporary file: " + str(e)
+        ROOT_LOGGER.exception("Exception: %s", error_msg)
 
     if error:
         ROOT_LOGGER.exception("Argo command line error: %s", output)
@@ -148,6 +164,32 @@ def format_pod_info_response(pods_output) -> dict:
     return response_json
 
 
+def resolve_multipart(data) -> dict:
+    boundary = data.decode().split("\r")[0][2:]
+    multipart_parser = mp.MultipartParser(BytesIO(data), boundary)
+
+    blob = multipart_parser.parts()[0].value
+    temp_file_name = tempfile.NamedTemporaryFile(delete=False).name
+    f = open(temp_file_name, "wb")
+    f.write(blob.encode("latin-1"))
+    f.close()
+
+    parameters = multipart_parser.parts()[1].value
+    parameters_json = yaml.load(parameters, Loader=yaml.SafeLoader)
+    parameters_json['workflow_yaml'] = temp_file_name
+
+    return parameters_json
+
+
+def analyze_request() -> dict:
+    if request.headers['Content-Type'].startswith('multipart/mixed'):
+        input_data = resolve_multipart(request.data)
+    else:
+        input_data = request.get_json(force=True)
+
+    return input_data
+
+
 @application.route('/', methods=['GET'])
 def get_root():
     """Root Endpoint."""
@@ -162,7 +204,7 @@ def get_root():
 def post_submit():
     """Submit Endpoint."""
 
-    input_data = request.get_json(force=True)
+    input_data = analyze_request()
 
     submit_dict = argo_command('submit', input_data)
     if submit_dict.get('Error'):
@@ -175,7 +217,7 @@ def post_submit():
 def post_e2e():
     """E2E Endpoint."""
 
-    input_data = request.get_json(force=True)
+    input_data = analyze_request()
 
     submit_dict = argo_command('submit', input_data)
     if submit_dict.get('Error'):

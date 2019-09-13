@@ -6,7 +6,9 @@ name = "pypi"
 [packages]
 app = "*"
 flask = "*"
-"gunicorn" = "*"
+gunicorn = "*"
+multipart = "*"
+pyyaml = "*"
 
 [dev-packages]
 
