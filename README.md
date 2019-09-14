@@ -84,7 +84,7 @@ Argo REST Server uses the Argo CLI command to submit workflows.
     - If the workflow file does not reside on the Argo REST Server, use the following command -
     
         ```
-        curl -H "Content-Type: multipart/mixed" -F "workflow=@.<workflow>.yaml" -F "parameters={ "namespace": "<namespace>", "bucket": "<my-bucket>" }" http://<host>/submit | python -m json.tool
+        curl -H "Content-Type: multipart/mixed" -F "workflow=@<workflow>.yaml" -F "parameters={ "namespace": "<namespace>", "bucket": "<my-bucket>" }" http://<host>/submit | python -m json.tool
         ```
         
     **Response JSON**
@@ -173,7 +173,7 @@ Argo REST Server uses the Argo CLI command to submit workflows.
     - If the workflow file does not reside on the Argo REST Server, use the following command -
     
         ```
-        curl -H "Content-Type: multipart/mixed" -F "workflow=@.<workflow>.yaml" -F "parameters={ "namespace": "<namespace>", "bucket": "<my-bucket>" }" http://<host>/e2e | python -m json.tool
+        curl -H "Content-Type: multipart/mixed" -F "workflow=@<workflow>.yaml" -F "parameters={ "namespace": "<namespace>", "bucket": "<my-bucket>" }" http://<host>/e2e | python -m json.tool
         ```
         
     **Response JSON**
