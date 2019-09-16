@@ -54,13 +54,14 @@ def parse_output(output_lines) -> dict:
 
 def call_argo() -> ():
     error = 0
+    local_argo_cmdline = ARGO_CMDLINE.copy()
+    ARGO_CMDLINE.clear()
+    ARGO_CMDLINE.append(ARGO)
     try:
-        result = subprocess.check_output(ARGO_CMDLINE, stderr=subprocess.STDOUT)
+        result = subprocess.check_output(local_argo_cmdline, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         result = e.output.decode().strip("\n")
         error = 1
-    ARGO_CMDLINE.clear()
-    ARGO_CMDLINE.append(ARGO)
     return result, error
 
 
