@@ -10,7 +10,7 @@ parameters:
   description: The URL of the repository with your application source code.
   displayName: Git repository URI
   required: true
-  value: https://github.com/AparnaKarve/ai-library-server.git
+  value: https://github.com/AparnaKarve/argo-rest-server.git
 - name: SOURCE_REPOSITORY_REF
   description: Git repository branch to check out, if different from default
   displayName: Git Reference

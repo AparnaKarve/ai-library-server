@@ -7,7 +7,7 @@ parameters:
 - name: IMAGE_NAMESPACE
   displayName: Image Namespace
   description: Namespace which contains the image stream to pull from
-  value: argo-rest-server
+  value: buildfactory
 
 objects:
 - kind: Service
@@ -48,8 +48,8 @@ objects:
       spec:
         containers:
         - env:
-          image: ${IMAGE_NAMESPACE}/ai-library-server:latest
-          imagePullPolicy: Always
+          image: ${IMAGE_NAMESPACE}/argo-rest-server:latest
+          imagePullPolicy: IfNotPresent
           name: argo-rest-server
           securityContext:
             runAsUser: 0
@@ -72,7 +72,7 @@ objects:
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 5
-            periodSeconds: 600
+            periodSeconds: 120
             successThreshold: 1
             timeoutSeconds: 120
           readinessProbe:
@@ -82,7 +82,7 @@ objects:
               port: 8080
               scheme: HTTP
             initialDelaySeconds: 5
-            periodSeconds: 600
+            periodSeconds: 120
             successThreshold: 1
             timeoutSeconds: 120
         dnsPolicy: ClusterFirst
@@ -95,10 +95,10 @@ objects:
     - imageChangeParams:
         automatic: true
         containerNames:
-        - ai-library-server
+        - argo-rest-server
         from:
           kind: ImageStreamTag
-          name: ai-library-server:latest
+          name: argo-rest-server:latest
           namespace: ${IMAGE_NAMESPACE}
       type: ImageChange
     - type: ConfigChange
@@ -107,7 +107,7 @@ objects:
   apiVersion: route.openshift.io/v1
   metadata:
     annotations:
-      haproxy.router.openshift.io/timeout: 30m
+      haproxy.router.openshift.io/timeout: 120m
     name: argo-rest-server
   spec:
     to:
