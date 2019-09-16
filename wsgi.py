@@ -22,7 +22,7 @@ application = Flask(__name__)  # noqa
 # Set up logging level
 ROOT_LOGGER.setLevel(application.logger.level)
 
-ARGO = '/usr/local/bin/argo'
+ARGO = 'argo'
 
 
 def pass_entity(_k, v, cmd_line):

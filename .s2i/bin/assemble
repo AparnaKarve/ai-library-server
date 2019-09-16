@@ -1,0 +1,7 @@
+#!/bin/bash
+echo "Fetching Argo CLI..."
+curl -sSL -o /opt/app-root/bin/argo https://github.com/argoproj/argo/releases/download/v2.3.0/argo-linux-amd64
+chmod +x /opt/app-root/bin/argo
+echo "Done Argo CLI fetch"
+
+exec /usr/libexec/s2i/assemble
