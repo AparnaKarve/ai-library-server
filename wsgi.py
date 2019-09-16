@@ -23,19 +23,18 @@ application = Flask(__name__)  # noqa
 ROOT_LOGGER.setLevel(application.logger.level)
 
 ARGO = '/usr/local/bin/argo'
-ARGO_CMDLINE = [ARGO]
 
 
-def pass_entity(_k, v):
-    ARGO_CMDLINE.append(v)
+def pass_entity(_k, v, cmd_line):
+    cmd_line.append(v)
 
 
-def pass_namespace(_k, v):
-    ARGO_CMDLINE.extend(['-n', v])
+def pass_namespace(_k, v, cmd_line):
+    cmd_line.extend(['-n', v])
 
 
-def pass_parameter(k, v):
-    ARGO_CMDLINE.extend(['-p', f'{k}={v}'])
+def pass_parameter(k, v, cmd_line):
+    cmd_line.extend(['-p', f'{k}={v}'])
 
 
 PARAM_METHODS = {
@@ -52,13 +51,11 @@ def parse_output(output_lines) -> dict:
     return d
 
 
-def call_argo() -> ():
+def call_argo(argo_cmd) -> ():
     error = 0
-    local_argo_cmdline = ARGO_CMDLINE.copy()
-    ARGO_CMDLINE.clear()
-    ARGO_CMDLINE.append(ARGO)
+
     try:
-        result = subprocess.check_output(local_argo_cmdline, stderr=subprocess.STDOUT)
+        result = subprocess.check_output(argo_cmd, stderr=subprocess.STDOUT)
     except subprocess.CalledProcessError as e:
         result = e.output.decode().strip("\n")
         error = 1
@@ -95,17 +92,18 @@ def outputs_and_artifacts(pods_output, node) -> dict:
 
 
 def argo_command(cmd, input_data_with_params, options=['-o', 'json']) -> dict:
-    ARGO_CMDLINE.append(cmd)
+    argo_cmd = []
+    argo_cmd.extend([ARGO, cmd])
 
     for k, v in input_data_with_params.items():
         func = PARAM_METHODS.get(k, pass_parameter)
-        func(k, v)
+        func(k, v, argo_cmd)
 
-    ARGO_CMDLINE.extend(options)
+        argo_cmd.extend(options)
 
-    ROOT_LOGGER.info("Argo command line: %s", ARGO_CMDLINE)
+    ROOT_LOGGER.info("Argo command line: %s", argo_cmd)
 
-    output, error = call_argo()
+    output, error = call_argo(argo_cmd)
 
     try:
         if 'workflow_yaml' in input_data_with_params:
