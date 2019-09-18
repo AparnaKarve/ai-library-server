@@ -1,0 +1,107 @@
+kind: Template
+apiVersion: v1
+metadata:
+  name: argo-rest-server
+
+parameters:
+- name: IMAGE_NAMESPACE
+  displayName: Image Namespace
+  description: Namespace which contains the image stream to pull from
+  value: quay.io/akarve
+
+objects:
+- kind: Service
+  apiVersion: v1
+  metadata:
+    labels:
+      app: argo-rest-server
+    name: argo-rest-server
+    annotations:
+  spec:
+    ports:
+    - name: 8080-tcp
+      port: 8080
+      protocol: TCP
+      targetPort: 8080
+    selector:
+      deploymentconfig: argo-rest-server
+    sessionAffinity: None
+    type: ClusterIP
+
+- kind: DeploymentConfig
+  apiVersion: apps.openshift.io/v1
+  metadata:
+    labels:
+      app: argo-rest-server
+    name: argo-rest-server
+  spec:
+    replicas: 1
+    selector:
+      deploymentconfig: argo-rest-server
+    strategy:
+      type: Recreate
+    template:
+      metadata:
+        labels:
+          app: argo-rest-server
+          deploymentconfig: argo-rest-server
+      spec:
+        containers:
+        - env:
+          image: ${IMAGE_NAMESPACE}/argo-rest-server:latest
+          imagePullPolicy: Always
+          name: argo-rest-server
+          securityContext:
+            runAsUser: 0
+          ports:
+          - containerPort: 8080
+            protocol: TCP
+          terminationMessagePath: /dev/termination-log
+          terminationMessagePolicy: File
+          resources:
+            limits:
+              cpu: 250m
+              memory: 2Gi
+            requests:
+              cpu: 125m
+              memory: 512Mi
+        dnsPolicy: ClusterFirst
+        restartPolicy: Always
+        schedulerName: default-scheduler
+        terminationGracePeriodSeconds: 30
+
+    test: false
+
+- kind: Route
+  apiVersion: route.openshift.io/v1
+  metadata:
+    annotations:
+      haproxy.router.openshift.io/timeout: 120m
+    name: argo-rest-server
+  spec:
+    to:
+      kind: Service
+      name: argo-rest-server
+
+- kind: HorizontalPodAutoscaler
+  apiVersion: autoscaling/v2beta1
+  metadata:
+    labels:
+      app: argo-rest-server
+    name: argo-rest-server
+  spec:
+    scaleTargetRef:
+      kind: DeploymentConfig
+      name: argo-rest-server
+      apiVersion: apps.openshift.io/v1
+    minReplicas: 1
+    maxReplicas: 3
+    metrics:
+    - type: Resource
+      resource:
+        name: memory
+        targetAverageUtilization: 90
+    - type: Resource
+      resource:
+        name: cpu
+        targetAverageUtilization: 80

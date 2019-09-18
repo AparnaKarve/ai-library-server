@@ -51,13 +51,16 @@ def parse_output(output_lines) -> dict:
     return d
 
 
-def call_argo(argo_cmd) -> ():
+def call_argo(argo_cmd_line) -> ():
     error = 0
 
     try:
-        result = subprocess.check_output(argo_cmd, stderr=subprocess.STDOUT)
-    except subprocess.CalledProcessError as e:
-        result = e.output.decode().strip("\n")
+        result = subprocess.check_output(argo_cmd_line, stderr=subprocess.STDOUT)
+    except (FileNotFoundError, subprocess.CalledProcessError) as e:
+        if hasattr(e, 'output'):
+            result = e.output.decode().strip()
+        else:
+            result = e.strerror
         error = 1
     return result, error
 
@@ -92,18 +95,18 @@ def outputs_and_artifacts(pods_output, node) -> dict:
 
 
 def argo_command(cmd, input_data_with_params, options=['-o', 'json']) -> dict:
-    argo_cmd = []
-    argo_cmd.extend([ARGO, cmd])
+    argo_cmd_line = []
+    argo_cmd_line.extend([ARGO, cmd])
 
     for k, v in input_data_with_params.items():
         func = PARAM_METHODS.get(k, pass_parameter)
-        func(k, v, argo_cmd)
+        func(k, v, argo_cmd_line)
 
-        argo_cmd.extend(options)
+    argo_cmd_line.extend(options)
 
-    ROOT_LOGGER.info("Argo command line: %s", argo_cmd)
+    ROOT_LOGGER.info("Argo command line: %s", argo_cmd_line)
 
-    output, error = call_argo(argo_cmd)
+    output, error = call_argo(argo_cmd_line)
 
     try:
         if 'workflow_yaml' in input_data_with_params:
@@ -130,9 +133,12 @@ def argo_command(cmd, input_data_with_params, options=['-o', 'json']) -> dict:
 
 def argo_get(input_data) -> dict:
     get_workflow = {
-        'workflow_name': input_data.get('workflow_name'),
-        'namespace': input_data.get('namespace')
+        'workflow_name': input_data.get('workflow_name')
     }
+
+    if 'namespace' in input_data:
+        get_workflow['namespace'] = input_data['namespace']
+
     get_dict = argo_command('get', get_workflow)
 
     return get_dict
@@ -195,45 +201,7 @@ def analyze_request() -> dict:
     return input_data
 
 
-@application.route('/', methods=['GET'])
-def get_root():
-    """Root Endpoint."""
-
-    version_dict = argo_version()
-    if version_dict.get('Error'):
-        return jsonify(version_dict), 500
-
-    return jsonify(
-        status="Success",
-        message="Up and Running"
-    ), 200
-
-
-@application.route('/submit', methods=['POST'])
-def post_submit():
-    """Submit Endpoint."""
-
-    input_data = analyze_request()
-
-    submit_dict = argo_command('submit', input_data)
-    if submit_dict.get('Error'):
-        return jsonify(submit_dict), 500
-
-    return jsonify(submit_dict['metadata']), 200
-
-
-@application.route('/e2e', methods=['POST'])
-def post_e2e():
-    """E2E Endpoint."""
-
-    input_data = analyze_request()
-
-    submit_dict = argo_command('submit', input_data)
-    if submit_dict.get('Error'):
-        return jsonify(submit_dict), 500
-
-    input_data['workflow_name'] = submit_dict['metadata']['name']
-    input_data['namespace'] = submit_dict['metadata']['namespace']
+def e2e(input_data) -> dict:
     watch_output = argo_watch(input_data)
     if watch_output.get('Error'):
         error_message = f"Workflow {input_data['workflow_name']} submitted OK, output/artifacts info cannot be produced"
@@ -250,11 +218,48 @@ def post_e2e():
     return jsonify({"workflow_response": response_json}), 200
 
 
-@application.route('/get', methods=['POST'])
-def post_get():
-    """Get Endpoint."""
+@application.route('/status', methods=['GET'])
+def get_root():
+    """Status Endpoint."""
 
-    input_data = request.get_json(force=True)
+    version_dict = argo_version()
+    if version_dict.get('Error'):
+        return jsonify(version_dict), 500
+
+    return jsonify(
+        status="Success",
+        message="Up and Running"
+    ), 200
+
+
+@application.route('/training-jobs', methods=['POST'])
+def post_training_jobs():
+    """POST Training Jobs Endpoint."""
+
+    input_data = analyze_request()
+
+    submit_dict = argo_command('submit', input_data)
+    if submit_dict.get('Error'):
+        return jsonify(submit_dict), 500
+
+    if str(input_data.get('quick-submit', False)).lower() in ['true', 'y']:
+        return jsonify(submit_dict['metadata']), 200
+    else:
+        input_data['workflow_name'] = submit_dict['metadata']['name']
+        input_data['namespace'] = submit_dict['metadata']['namespace']
+        return e2e(input_data)
+
+
+@application.route('/training-jobs/<workflow_name>', methods=['GET'])
+def get_training_jobs_id_info(workflow_name):
+    """GET Individual Training Jobs Endpoint."""
+
+    input_data = {}
+
+    if request.json:
+        input_data = request.get_json(force=True)
+
+    input_data['workflow_name'] = workflow_name
 
     pods_output = argo_get(input_data)
     if pods_output.get('Error'):
@@ -266,5 +271,5 @@ def post_get():
 
 if __name__ == '__main__':
     # pylama:ignore=C0103
-    port = os.environ.get("PORT", 8003)
+    port = os.environ.get("PORT", 8080)
     application.run(port=int(port))

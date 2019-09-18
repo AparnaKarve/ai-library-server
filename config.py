@@ -1,5 +1,3 @@
-import os
-
 # pylama:ignore=C0103
 bind = '127.0.0.1:8000'
 

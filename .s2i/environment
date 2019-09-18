@@ -1,2 +1,4 @@
 APP_CONFIG=config.py
 ENABLE_PIPENV=true
+UPGRADE_PIP_TO_LATEST=true
+
