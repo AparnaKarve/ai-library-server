@@ -9,6 +9,7 @@ flask = "*"
 gunicorn = "*"
 multipart = "*"
 pyyaml = "*"
+kubernetes = "*"
 
 [dev-packages]
 

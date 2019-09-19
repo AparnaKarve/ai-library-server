@@ -11,6 +11,8 @@ import multipart as mp
 import yaml
 import tempfile
 
+from kubernetes_configuration import kubernetes_api_instance, NAMESPACE
+
 
 # Set up logging
 ROOT_LOGGER = logging.getLogger()
@@ -20,9 +22,16 @@ ROOT_LOGGER.addHandler(default_handler)
 application = Flask(__name__)  # noqa
 
 # Set up logging level
-ROOT_LOGGER.setLevel(application.logger.level)
+ROOT_LOGGER.setLevel(logging.INFO)
 
 ARGO = 'argo'
+
+GROUP = "argoproj.io"
+VERSION = "v1alpha1"
+PLURAL = "workflows"
+KIND = "Workflow"
+
+TRAINING = 'training'
 
 
 def pass_entity(_k, v, cmd_line):
@@ -267,6 +276,34 @@ def get_training_jobs_id_info(workflow_name):
 
     response_json = format_pod_info_response(pods_output)
     return jsonify({"workflow_response": response_json}), 200
+
+
+@application.route('/training-jobs', methods=['GET'])
+def get_training_jobs():
+    """GET Training Jobs Endpoint."""
+
+    namespace = NAMESPACE
+
+    if request.json:
+        input_data = request.get_json(force=True)
+        namespace = input_data.get('namespace', NAMESPACE)
+
+    api_instance = kubernetes_api_instance()
+
+    api_response = api_instance.list_namespaced_custom_object(
+        group=GROUP,
+        version=VERSION,
+        namespace=namespace,
+        plural=PLURAL,
+        pretty=True,
+        label_selector=f"jobType={TRAINING}")
+
+    response_json = {}
+
+    for i in api_response['items']:
+        response_json[i['metadata']['name']] = format_pod_info_response(i)
+
+    return jsonify({"training_jobs_response": response_json}), 200
 
 
 if __name__ == '__main__':

@@ -1,4 +1,8 @@
 APP_CONFIG=config.py
 ENABLE_PIPENV=true
 UPGRADE_PIP_TO_LATEST=true
+API_KEY=/var/run/secrets/kubernetes.io/serviceaccount/token
+NAMESPACE=/var/run/secrets/kubernetes.io/serviceaccount/namespace
+CA_CERT=/var/run/secrets/kubernetes.io/serviceaccount/ca.crt
+K8S_HOST=https://kubernetes.default.svc
 

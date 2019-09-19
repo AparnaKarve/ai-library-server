@@ -1,6 +1,0 @@
- #!/bin/bash
-echo "Making Argo CLI accessible..."
-mv ./argo /usr/local/bin/
-echo "Done"
-
-exec /usr/libexec/s2i/run
