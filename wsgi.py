@@ -210,6 +210,14 @@ def analyze_request() -> dict:
     return input_data
 
 
+def validate_workflow(workflow_yaml, type) -> bool:
+    with open(workflow_yaml) as yaml_file:
+        workflow = yaml.full_load(yaml_file)
+        if workflow['metadata'].get('labels', {}).get('jobType', '') == type:
+            return True
+    return False
+
+
 def e2e(input_data) -> dict:
     watch_output = argo_watch(input_data)
     if watch_output.get('Error'):
@@ -246,6 +254,9 @@ def post_training_jobs():
     """POST Training Jobs Endpoint."""
 
     input_data = analyze_request()
+
+    if not validate_workflow(input_data['workflow_yaml'], TRAINING):
+        return jsonify({'Error': 'Workflow type is not TRAINING'}), 500
 
     submit_dict = argo_command('submit', input_data)
     if submit_dict.get('Error'):
