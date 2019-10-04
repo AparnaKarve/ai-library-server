@@ -235,6 +235,24 @@ def e2e(input_data) -> dict:
     return jsonify({"workflow_response": response_json}), 200
 
 
+def post_jobs(job_type) -> dict:
+    input_data = analyze_request()
+
+    if not validate_workflow(input_data['workflow_yaml'], job_type):
+        return jsonify({'Error': f'Workflow type is not {job_type}'}), 500
+
+    submit_dict = argo_command('submit', input_data)
+    if submit_dict.get('Error'):
+        return jsonify(submit_dict), 500
+
+    if str(input_data.get('quick-submit', False)).lower() in ['true', 'y']:
+        return jsonify(submit_dict['metadata']), 200
+    else:
+        input_data['workflow_name'] = submit_dict['metadata']['name']
+        input_data['namespace'] = submit_dict['metadata']['namespace']
+        return e2e(input_data)
+
+
 @application.route('/status', methods=['GET'])
 def get_root():
     """Status Endpoint."""
@@ -253,21 +271,7 @@ def get_root():
 def post_training_jobs():
     """POST Training Jobs Endpoint."""
 
-    input_data = analyze_request()
-
-    if not validate_workflow(input_data['workflow_yaml'], TRAINING):
-        return jsonify({'Error': 'Workflow type is not TRAINING'}), 500
-
-    submit_dict = argo_command('submit', input_data)
-    if submit_dict.get('Error'):
-        return jsonify(submit_dict), 500
-
-    if str(input_data.get('quick-submit', False)).lower() in ['true', 'y']:
-        return jsonify(submit_dict['metadata']), 200
-    else:
-        input_data['workflow_name'] = submit_dict['metadata']['name']
-        input_data['namespace'] = submit_dict['metadata']['namespace']
-        return e2e(input_data)
+    return post_jobs(TRAINING)
 
 
 @application.route('/training-jobs/<workflow_name>', methods=['GET'])
