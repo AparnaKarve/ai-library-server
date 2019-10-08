@@ -51,7 +51,7 @@ Argo REST Server uses the Argo CLI command to submit workflows.
     
     JSON Parameter `"quick-submit": "Y"` can be passed if a workflow merely needs to be submitted without further monitoring. With the `quick-submit` option specified, the POST call will return immediately.
     
-- `GET /training-jobs/<workflow_id>`
+- `GET /jobs/<workflow_id>`
 
     Gets the specified workflow details
     
@@ -155,14 +155,14 @@ Argo REST Server uses the Argo CLI command to submit workflows.
   ```  
         
 -----        
-- `GET /training-jobs/<workflow_id>` 
+- `GET /jobs/<workflow_id>` 
     
     ```
-    curl http://<host>/training-jobs/flakestrainxdpt2 | python -m json.tool
+    curl http://<host>/jobs/flakestrainxdpt2 | python -m json.tool
     ```
     
     ```
-    curl -X GET -H "Content-Type: application/json" http://<host>/training-jobs/flakestrainxdpt2 -d '{"namespace": "argo-rest-server"}'| python -m json.tool
+    curl -X GET -H "Content-Type: application/json" http://<host>/jobs/flakestrainxdpt2 -d '{"namespace": "argo-rest-server"}'| python -m json.tool
     ```
     
     **Response JSON**
