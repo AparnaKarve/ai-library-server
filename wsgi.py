@@ -274,7 +274,7 @@ def post_training_jobs():
     return post_jobs(TRAINING)
 
 
-@application.route('/training-jobs/<workflow_name>', methods=['GET'])
+@application.route('/jobs/<workflow_name>', methods=['GET'])
 def get_training_jobs_id_info(workflow_name):
     """GET Individual Training Jobs Endpoint."""
 
