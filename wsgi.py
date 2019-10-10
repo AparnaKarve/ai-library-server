@@ -253,6 +253,31 @@ def post_jobs(job_type) -> dict:
         return e2e(input_data)
 
 
+def get_jobs(job_type) -> dict:
+    namespace = NAMESPACE
+
+    if request.json:
+        input_data = request.get_json(force=True)
+        namespace = input_data.get('namespace', NAMESPACE)
+
+    api_instance = kubernetes_api_instance()
+
+    api_response = api_instance.list_namespaced_custom_object(
+        group=GROUP,
+        version=VERSION,
+        namespace=namespace,
+        plural=PLURAL,
+        pretty=True,
+        label_selector=f"jobType={job_type}")
+
+    response_json = {}
+
+    for i in api_response['items']:
+        response_json[i['metadata']['name']] = format_pod_info_response(i)
+
+    return response_json
+
+
 @application.route('/status', methods=['GET'])
 def get_root():
     """Status Endpoint."""
@@ -297,28 +322,12 @@ def get_training_jobs_id_info(workflow_name):
 def get_training_jobs():
     """GET Training Jobs Endpoint."""
 
-    namespace = NAMESPACE
-
-    if request.json:
-        input_data = request.get_json(force=True)
-        namespace = input_data.get('namespace', NAMESPACE)
-
-    api_instance = kubernetes_api_instance()
-
-    api_response = api_instance.list_namespaced_custom_object(
-        group=GROUP,
-        version=VERSION,
-        namespace=namespace,
-        plural=PLURAL,
-        pretty=True,
-        label_selector=f"jobType={TRAINING}")
-
-    response_json = {}
-
-    for i in api_response['items']:
-        response_json[i['metadata']['name']] = format_pod_info_response(i)
+    response_json = get_jobs(TRAINING)
 
     return jsonify({"training_jobs_response": response_json}), 200
+
+
+
 
 
 if __name__ == '__main__':
