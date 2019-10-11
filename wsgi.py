@@ -14,6 +14,8 @@ import tempfile
 from kubernetes_configuration import kubernetes_api_instance, NAMESPACE
 
 
+# ### ALL HELPERS BELOW ###
+
 # Set up logging
 ROOT_LOGGER = logging.getLogger()
 ROOT_LOGGER.addHandler(default_handler)
@@ -32,6 +34,7 @@ PLURAL = "workflows"
 KIND = "Workflow"
 
 TRAINING = 'training'
+PREDICTION = 'prediction'
 
 
 def pass_entity(_k, v, cmd_line):
@@ -278,6 +281,9 @@ def get_jobs(job_type) -> dict:
     return response_json
 
 
+# ### ALL ENDPOINTS BELOW ###
+
+
 @application.route('/status', methods=['GET'])
 def get_root():
     """Status Endpoint."""
@@ -327,7 +333,20 @@ def get_training_jobs():
     return jsonify({"training_jobs_response": response_json}), 200
 
 
+@application.route('/prediction-jobs', methods=['POST'])
+def post_prediction_jobs():
+    """POST Prediction Jobs Endpoint."""
 
+    return post_jobs(PREDICTION)
+
+
+@application.route('/prediction-jobs', methods=['GET'])
+def get_prediction_jobs():
+    """GET Training Jobs Endpoint."""
+
+    response_json = get_jobs(PREDICTION)
+
+    return jsonify({"prediction_jobs_response": response_json}), 200
 
 
 if __name__ == '__main__':
