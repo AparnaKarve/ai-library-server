@@ -11,7 +11,7 @@ import multipart as mp
 import yaml
 import tempfile
 
-from kubernetes_configuration import kubernetes_api_instance, NAMESPACE
+from kubernetes_configuration import kubernetes_api_instance, NAMESPACE, API_EXCEPTION
 
 
 # ### ALL HELPERS BELOW ###

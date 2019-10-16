@@ -45,15 +45,24 @@ Argo REST Server uses the Argo CLI command to submit workflows.
 - `GET /status`
 
    Gets the status of the service
+   
 - `POST /training-jobs`
 
     Submits a Training job workflow.
     
     JSON Parameter `"quick-submit": "Y"` can be passed if a workflow merely needs to be submitted without further monitoring. With the `quick-submit` option specified, the POST call will return immediately.
     
+- `POST /prediction-jobs`
+
+    Submits a Prediction job workflow.    
+    
+- `GET /training-jobs`
+
+    Gets all training jobs
+    
 - `GET /jobs/<workflow_id>`
 
-    Gets the specified workflow details
+    Gets the specified training job details    
     
     
       
@@ -154,7 +163,57 @@ Argo REST Server uses the Argo CLI command to submit workflows.
   }
   ```  
         
------        
+----- 
+
+- `POST /prediction-jobs`
+
+   curl commands are identical to `POST /training-jobs` (see above)
+
+    **Response JSON**
+  
+  ```
+   {
+    "workflow_response": {
+        "Info": {
+            "creationTimestamp": "2019-10-15T23:56:05Z",
+            "generateName": "anomalydetectionpredict",
+            "generation": 1,
+            "labels": {
+                "jobType": "prediction",
+                "workflows.argoproj.io/completed": "true",
+                "workflows.argoproj.io/phase": "Succeeded"
+            },
+            "name": "anomalydetectionpredictcbbk6",
+            "namespace": "ak-project",
+            "resourceVersion": "24050733",
+            "selfLink": "/apis/argoproj.io/v1alpha1/namespaces/ak-project/workflows/anomalydetectionpredictcbbk6",
+            "uid": "5988990f-efa7-11e9-ac81-64006a625e19"
+        },
+        "Per_Step_Output": {
+            "anomalydetectionpredictcbbk6": {
+                "message": "No info available",
+                "outputs": {
+                    "artifact_type": "No artifacts info available"
+                },
+                "phase": "Succeeded"
+            },
+            "anomalydetectionpredictcbbk6.Anomaly-Detection-Predict": {
+                "message": "No info available",
+                "outputs": {
+                    "artifact_type": "S3",
+                    "bucket": "DH-DEV-DATA",
+                    "endpoint-url": "s3.upshift.redhat.com",
+                    "key": "akarvetest/fromargo/anomalydetection/result-output-5988990f-efa7-11e9-ac81-64006a625e19.tgz"
+                },
+                "phase": "Succeeded"
+            }
+        }
+    }
+    ```
+ 
+
+------  
+         
 - `GET /jobs/<workflow_id>` 
     
     ```
@@ -205,4 +264,119 @@ Argo REST Server uses the Argo CLI command to submit workflows.
     }
   ```
   
-  The `Per_Step_Output` provides Output info per step in the workflow.
+
+
+-----        
+- `GET /training-jobs` 
+    
+    ```
+    curl http://<host>/training-jobs | python -m json.tool
+    ```
+    
+    ```
+    curl -X GET -H "Content-Type: application/json" http://<host>/training-jobs -d '{"namespace": "argo-rest-server"}'| python -m json.tool
+    ```
+    
+    **Response JSON**
+  
+  ```
+   "training_jobs_response": {
+        "anomalydetectiontrain5cbhk": {
+            "Info": {
+                "creationTimestamp": "2019-09-20T20:16:02Z",
+                "generateName": "anomalydetectiontrain",
+                "generation": 1,
+                "labels": {
+                    "jobType": "training",
+                    "workflows.argoproj.io/completed": "true",
+                    "workflows.argoproj.io/phase": "Succeeded"
+                },
+                "name": "anomalydetectiontrain5cbhk",
+                "namespace": "ak-project",
+                "resourceVersion": "19299195",
+                "selfLink": "/apis/argoproj.io/v1alpha1/namespaces/ak-project/workflows/anomalydetectiontrain5cbhk",
+                "uid": "77d186c8-dbe3-11e9-ac81-64006a625e19"
+            },
+            "Per_Step_Output": {
+                "anomalydetectiontrain5cbhk": {
+                    "message": "No info available",
+                    "outputs": {
+                        "artifact_type": "No artifacts info available"
+                    },
+                    "phase": "Succeeded"
+                },
+                "anomalydetectiontrain5cbhk.Anomaly-Detection-Train": {
+                    "message": "No info available",
+                    "outputs": {
+                        "artifact_type": "S3",
+                        "bucket": "ak-s3-reject",
+                        "endpoint-url": "s3.amazonaws.com",
+                        "key": "akarvetest/fromargo/anomaly-detection/model-output-77d186c8-dbe3-11e9-ac81-64006a625e19.tgz"
+                    },
+                    "phase": "Succeeded"
+                }
+            }
+        },
+        "flakestrain74vrb": {
+            ...
+            ...
+        }
+   }     
+  ```
+  
+- `GET /prediction-jobs` 
+    
+    ```
+    curl http://<host>/prediction-jobs | python -m json.tool
+    ```
+    
+    ```
+    curl -X GET -H "Content-Type: application/json" http://<host>/prediction-jobs -d '{"namespace": "argo-rest-server"}'| python -m json.tool
+    ```
+    
+    **Response JSON**
+  
+  ```
+   "prediction_jobs_response": {
+        "anomalydetectionpredict4dxfj": {
+            "Info": {
+                "creationTimestamp": 2019-09-24T20:45:48Z",
+                "generateName": "anomalydetectionpredict",
+                "generation": 1,
+                "labels": {
+                    "jobType": "prediction",
+                    "workflows.argoproj.io/completed": "true",
+                    "workflows.argoproj.io/phase": "Succeeded"
+                },
+                "name": "anomalydetectionpredict4dxfj",
+                "namespace": "ak-project",
+                "resourceVersion": "19299195",
+                "selfLink": "/apis/argoproj.io/v1alpha1/namespaces/ak-project/workflows/anomalydetectionpredict4dxfj",
+                "uid": "77d186c8-dbe3-11e9-ac81-64006a625e19"
+            },
+            "Per_Step_Output": {
+                "anomalydetectionpredict4dxfj": {
+                    "message": "No info available",
+                    "outputs": {
+                        "artifact_type": "No artifacts info available"
+                    },
+                    "phase": "Succeeded"
+                },
+                "anomalydetectionpredict4dxfj.Anomaly-Detection-Predict": {
+                    "message": "No info available",
+                    "outputs": {
+                        "artifact_type": "S3",
+                        "bucket": DH-DEV-DATA",
+                        "endpoint-url": s3.upshift.redhat.com",
+                        "key": akarvetest/fromargo/anomaly-detection/results-49e8ec90-df0c-11e9-ac81-64006a625e19.tgz"
+                    },
+                    "phase": "Succeeded"
+                }
+            }
+        },
+        "anomalydetectionpredict6hx4c": {
+            ...
+            ...
+        }
+   }     
+  ```  
